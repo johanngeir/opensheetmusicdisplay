@@ -9,7 +9,7 @@ import { MusicSheet } from "../MusicSheet";
 import { GraphicalMeasure } from "./GraphicalMeasure";
 import {ClefInstruction, ClefEnum} from "../VoiceData/Instructions/ClefInstruction";
 import { LyricWord } from "../VoiceData/Lyrics/LyricsWord";
-import { SourceMeasure } from "../VoiceData/SourceMeasure";
+import { SourceMeasure, MeasureNumberingType } from "../VoiceData/SourceMeasure";
 import { GraphicalMusicPage } from "./GraphicalMusicPage";
 import { GraphicalNote } from "./GraphicalNote";
 import { Beam } from "../VoiceData/Beam";
@@ -466,36 +466,62 @@ export abstract class MusicSheetCalculator {
             log.warn("calculateMeasureNumberPlacement: measure undefined for system.Id " + musicSystem.Id);
             return; // TODO apparently happens in script sometimes (mp #70)
         }
+
+        // Determine the effective measure numbering mode from the first source measure of the entire piece
+        // (where <print><measure-numbering> is typically defined), not from the first measure of this system
+        const firstSourceMeasure: SourceMeasure = this.graphicalMusicSheet?.ParentMusicSheet?.getFirstSourceMeasure();
+        const measureNumberingMode: MeasureNumberingType | undefined = firstSourceMeasure?.measureNumberingXml;
+
+        // If measure-numbering is "none", don't render any measure numbers
+        if (measureNumberingMode === MeasureNumberingType.None) {
+            return;
+        }
+
         let previousMeasureNumber: number = staffLine.Measures[0].MeasureNumber;
         let labelOffsetX: number = 0;
         for (let i: number = 0; i < staffLine.Measures.length; i++) {
             const measure: GraphicalMeasure = staffLine.Measures[i];
-            let skip: boolean = this.rules.RenderMeasureNumbersOnlyAtSystemStart && i > 1;
-            if (i === 1 && staffLine.Measures[0].parentSourceMeasure.ImplicitMeasure) {
-                skip = false; // if the first measure (i=0) is a pickup measure, we shouldn't skip measure number 1 (i=1)
+            const sourceMeasure: SourceMeasure = measure.parentSourceMeasure;
+
+            const isImplicitMeasure: boolean = sourceMeasure.implicitXml || sourceMeasure.ImplicitMeasure;
+
+            let skip: boolean = false;
+            if (measureNumberingMode === MeasureNumberingType.Measure) {
+                skip = false;
+            } else {
+                skip = this.rules.RenderMeasureNumbersOnlyAtSystemStart && i > 1;
+                if (i === 1 && staffLine.Measures[0].parentSourceMeasure.ImplicitMeasure) {
+                    skip = false;
+                }
             }
             if (skip) {
-                return; // no more measures number labels need to be rendered for this system, so we can just return instead of continue.
+                return;
             }
             if (measure.MeasureNumber === 0 || measure.MeasureNumber === 1) {
                 previousMeasureNumber = measure.MeasureNumber;
-                // for the first measure, this label still needs to be created. Afterwards, this variable will hold the previous label's measure number.
             }
             if (measure !== staffLine.Measures[0] && this.rules.MeasureNumberLabelXOffset) {
                 labelOffsetX = this.rules.MeasureNumberLabelXOffset;
             } else {
-                labelOffsetX = 0; // don't offset label for first measure in staffline
+                labelOffsetX = 0;
             }
 
             const isFirstMeasureAndNotPrintedOne: boolean = this.rules.UseXMLMeasureNumbers &&
-                measure.MeasureNumber === 1 && measure.parentSourceMeasure.getPrintedMeasureNumber() !== 1;
-            if ((measure.MeasureNumber === previousMeasureNumber ||
-                measure.MeasureNumber >= previousMeasureNumber + this.rules.MeasureNumberLabelOffset) &&
-                !measure.parentSourceMeasure.ImplicitMeasure ||
-                isFirstMeasureAndNotPrintedOne) {
+                measure.MeasureNumber === 1 && sourceMeasure.getPrintedMeasureNumber() !== 1;
+
+            const isMeasureMode: boolean = measureNumberingMode === MeasureNumberingType.Measure;
+            const meetsOffsetCriteria: boolean = measure.MeasureNumber === previousMeasureNumber ||
+                measure.MeasureNumber >= previousMeasureNumber + this.rules.MeasureNumberLabelOffset;
+
+            if ((isMeasureMode || meetsOffsetCriteria) && !isImplicitMeasure || isFirstMeasureAndNotPrintedOne) {
+                const explicitSystemMode: boolean = measureNumberingMode === MeasureNumberingType.System;
+                const isFirstMeasureAtSystemStart: boolean = measure.MeasureNumber === 1 && measure === staffLine.Measures[0];
+
                 if (measure.MeasureNumber !== 1 ||
                     (measure.MeasureNumber === 1 && measure !== staffLine.Measures[0]) ||
-                    isFirstMeasureAndNotPrintedOne
+                    isFirstMeasureAndNotPrintedOne ||
+                    (explicitSystemMode && isFirstMeasureAtSystemStart) ||
+                    isMeasureMode
                     ) {
                     this.calculateSingleMeasureNumberPlacement(measure, staffLine, musicSystem, labelOffsetX);
                 }
@@ -2650,7 +2676,9 @@ export abstract class MusicSheetCalculator {
                                 }
                             }
                         }
-                        this.setTieDirections(startStaffEntry);
+                        if (startStaffEntry) {
+                            this.setTieDirections(startStaffEntry);
+                        }
                     }
                 }
             }

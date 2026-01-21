@@ -138,8 +138,12 @@ export class MusicSystemBuilder {
             const doXmlPageBreak: boolean = this.rules.NewPageAtXMLNewPageAttribute && sourceMeasure.printNewPageXml;
             const impliedSystemBreak: boolean = doXmlPageBreak || // also create new system if doing page break
                 (this.rules.NewSystemAtXMLNewPageAttribute && sourceMeasure.printNewPageXml);
-            const doXmlLineBreak: boolean = impliedSystemBreak ||
-                (this.rules.NewSystemAtXMLNewSystemAttribute && sourceMeasure.printNewSystemXml) ||
+            const xmlLineBreakRequested: boolean =
+                this.rules.NewSystemAtXMLNewSystemAttribute && sourceMeasure.printNewSystemXml;
+            if (xmlLineBreakRequested) {
+                console.log(`[OSMD] Measure ${sourceMeasure.MeasureNumber}: XML line break requested`);
+            }
+            const doXmlLineBreak: boolean = impliedSystemBreak || xmlLineBreakRequested ||
                 currentMeasureNumberInSystem === this.rules.RenderXMeasuresPerLineAkaSystem && currentMeasureNumberInSystem > 0;
             if (isSystemStartMeasure || (measureFitsInSystem && !doXmlLineBreak)) {
                 this.addMeasureToSystem(

@@ -2,7 +2,7 @@ import {Instrument} from "../Instrument";
 import {MusicSheet} from "../MusicSheet";
 import {VoiceGenerator} from "./VoiceGenerator";
 import {Staff} from "../VoiceData/Staff";
-import {SourceMeasure} from "../VoiceData/SourceMeasure";
+import {SourceMeasure, MeasureNumberingType} from "../VoiceData/SourceMeasure";
 import {SourceStaffEntry} from "../VoiceData/SourceStaffEntry";
 import {ClefInstruction} from "../VoiceData/Instructions/ClefInstruction";
 import {KeyInstruction} from "../VoiceData/Instructions/KeyInstruction";
@@ -154,6 +154,10 @@ export class InstrumentReader {
           log.info(`xml parse: osmdWidthFactor invalid for measure ${measureNumberXml}`);
         }
       }
+      const implicitAttr: IXmlAttribute = measureNode.attribute("implicit");
+      if (implicitAttr?.value === "yes") {
+        currentMeasure.implicitXml = true;
+      }
       let previousNode: IXmlElement; // needs a null check when accessed because of node index 0!
       for (let xmlNodeIndex: number = 0; xmlNodeIndex < xmlMeasureListArr.length; xmlNodeIndex++) {
         const xmlNode: IXmlElement = xmlMeasureListArr[xmlNodeIndex];
@@ -168,6 +172,13 @@ export class InstrumentReader {
           const newPageAttr: IXmlAttribute = xmlNode.attribute("new-page");
           if (newPageAttr?.value === "yes") {
             currentMeasure.printNewPageXml = true;
+          }
+          const measureNumberingNode: IXmlElement = xmlNode.element("measure-numbering");
+          if (measureNumberingNode) {
+            const value: string = measureNumberingNode.value?.toLowerCase();
+            if (value === "none" || value === "measure" || value === "system") {
+              currentMeasure.measureNumberingXml = value as MeasureNumberingType;
+            }
           }
         } else if (xmlNode.name === "attributes") {
           const divisionsNode: IXmlElement = xmlNode.element("divisions");

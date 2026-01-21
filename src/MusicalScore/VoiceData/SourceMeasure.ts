@@ -20,6 +20,19 @@ import { RhythmInstruction } from "./Instructions";
 //import {BaseIdClass} from "../../Util/BaseIdClass"; // SourceMeasure originally extended BaseIdClass, but ids weren't used.
 
 /**
+ * MusicXML measure-numbering values.
+ * Controls how measure numbers are displayed.
+ */
+export enum MeasureNumberingType {
+    /** No measure numbers displayed */
+    None = "none",
+    /** Measure numbers on every measure */
+    Measure = "measure",
+    /** Measure numbers only at system start (default) */
+    System = "system"
+}
+
+/**
  * The Source Measure represents the source data of a unique measure, including all instruments with their staves.
  * There exists one source measure per XML measure or per paper sheet measure (e.g. the source measures are not doubled in repetitions)
  */
@@ -95,6 +108,15 @@ export class SourceMeasure {
     public rehearsalExpression: RehearsalExpression;
     private verticalSourceStaffEntryContainers: VerticalSourceStaffEntryContainer[] = [];
     private implicitMeasure: boolean;
+    /** Whether the MusicXML explicitly specifies implicit="yes" on this measure element.
+     *  Separate from implicitMeasure which is computed based on duration analysis (pickup detection).
+     */
+    public implicitXml: boolean = false;
+    /** The measure-numbering value from MusicXML <print><measure-numbering> element.
+     *  Controls how measure numbers are displayed: none, measure, or system.
+     *  undefined means use default behavior (system mode, skip measure 1).
+     */
+    public measureNumberingXml: MeasureNumberingType;
     private hasEndLine: boolean;
     public hasEndClef: boolean;
     private graphicalMeasureErrors: boolean[] = [];
