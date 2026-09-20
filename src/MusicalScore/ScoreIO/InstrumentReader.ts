@@ -176,7 +176,10 @@ export class InstrumentReader {
           const measureNumberingNode: IXmlElement = xmlNode.element("measure-numbering");
           if (measureNumberingNode) {
             const value: string = measureNumberingNode.value?.toLowerCase();
-            if (value === "none" || value === "measure" || value === "system") {
+            // SourceMeasure is shared by all parts; the topmost part's setting governs display,
+            // so don't let a later part's value (typically "none") overwrite it.
+            if ((value === "none" || value === "measure" || value === "system") &&
+                currentMeasure.measureNumberingXml === undefined) {
               currentMeasure.measureNumberingXml = value as MeasureNumberingType;
             }
           }

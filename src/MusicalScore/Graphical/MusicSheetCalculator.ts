@@ -482,6 +482,9 @@ export abstract class MusicSheetCalculator {
         for (let i: number = 0; i < staffLine.Measures.length; i++) {
             const measure: GraphicalMeasure = staffLine.Measures[i];
             const sourceMeasure: SourceMeasure = measure.parentSourceMeasure;
+            if (!sourceMeasure) {
+                continue;
+            }
 
             const isImplicitMeasure: boolean = sourceMeasure.implicitXml || sourceMeasure.ImplicitMeasure;
 
